@@ -4,10 +4,11 @@ from supabase import create_client, Client
 # 1. إعداد الصفحة
 st.set_page_config(page_title="نظام إدارة المراسلات", layout="wide")
 
-# 2. بيانات الاتصال
+# 2. بيانات الاتصال بـ Supabase
 SUPABASE_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY3V5b2hkbXdmb2F2c255emdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMzM5ODYsImV4cCI6MjEwMDkwOTk4Nn0.kDgDlTsPVxobmrrXBuQJI0hdOvRwJLBpPps0IQTclC4"
 
+# 3. تنظيف البيانات لضمان الاتصال
 CLEAN_URL = str(SUPABASE_URL).strip().strip("/")
 CLEAN_KEY = str(SUPABASE_KEY).strip()
 
@@ -17,11 +18,11 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# تهيئة متغير الجلسة بأمان في بداية الكود
+# تهيئة متغير الجلسة
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# 3. دالة تسجيل الدخول
+# ----------------- 4. دالة تسجيل الدخول -----------------
 def login():
     st.title("🔑 تسجيل الدخول للنظام")
     
@@ -48,6 +49,7 @@ def login():
             elif not profile_response.data[0].get('is_active', False):
                 st.error("🔒 هذا الحساب غير نشط حاليًا. يرجى مراجعة إدارة النظام.")
             else:
+                # حفظ بيانات المستخدم في الجلسة
                 st.session_state.user = profile_response.data[0]
                 st.success("تم تسجيل الدخول بنجاح! جاري التحميل...")
                 st.rerun()
@@ -56,37 +58,18 @@ def login():
             error_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
             st.error(f"❌ فشل الدخول: {error_msg}")
 
-# 4. توجيه الصفحة
-if st.session_state.user is None:
-    login()
-else:
-    user_data = st.session_state.user
-    if isinstance(user_data, list):
-        user_data = user_data[0]
-
-    full_name = user_data.get('full_name', 'مستخدم')
-    role = user_data.get('role', 'user')
-
-    st.sidebar.title(f"مرحباً، {full_name}")
-    st.sidebar.write(f"الصلاحية: {role}")
-    
-    if st.sidebar.button("تسجيل الخروج"):
-        st.session_state.user = None
-        st.rerun()
-        
-    st.title("🎉 مرحباً بك في لوحة التحكم!")
-    st.success("تم تسجيل الدخول بنجاح للنظام.")
-    def admin_dashboard():
+# ----------------- 5. لوحة تحكم مدير النظام (ADMIN) -----------------
+def admin_dashboard():
     st.header("⚙️ لوحة قيادة مدير النظام")
     
     # 1. قسم الإحصائيات الشاملة
     col1, col2, col3 = st.columns(3)
-    users_data = supabase.table("profiles").select("*").execute().data
-    docs_data = supabase.table("documents").select("*").execute().data
+    users_data = supabase.table("profiles").select("*").execute().data or []
+    docs_data = supabase.table("documents").select("*").execute().data or []
     
     total_users = len(users_data)
-    active_users = sum(1 for u in users_data if u['is_active'])
-    pending_deletes = sum(1 for d in docs_data if d['is_deleted_pending'])
+    active_users = sum(1 for u in users_data if u.get('is_active'))
+    pending_deletes = sum(1 for d in docs_data if d.get('is_deleted_pending'))
     
     col1.metric("إجمالي الحسابات", total_users)
     col2.metric("الحسابات النشطة", active_users)
@@ -96,14 +79,14 @@ else:
 
     # 2. إدارة طلبات الحذف (Soft Delete Control)
     st.subheader("🗑️ طلبات الحذف بانتظار الموافقة")
-    pending_docs = supabase.table("documents").select("*").eq("is_deleted_pending", True).execute().data
+    pending_docs = supabase.table("documents").select("*").eq("is_deleted_pending", True).execute().data or []
     
     if not pending_docs:
         st.info("لا توجد طلبات حذف معلقة حاليًا.")
     else:
         for doc in pending_docs:
             c1, c2, c3 = st.columns([3, 1, 1])
-            c1.write(f"📄 **{doc['title']}** — أرسله: {doc['sender_name']}")
+            c1.write(f"📄 **{doc.get('title', '')}** — أرسله: {doc.get('sender_name', '')}")
             
             # موافقة المدير على الحذف النهائي
             if c2.button("تأكيد الحذف النهائي", key=f"del_{doc['id']}"):
@@ -121,15 +104,15 @@ else:
 
     # 3. جدول الاطلاع على المراسلات (Read Receipts)
     st.subheader("👁️ تتبع اطلاع الأساتذة والمدراء على المستندات")
-    reads = supabase.table("document_reads").select("*").execute().data
+    reads = supabase.table("document_reads").select("*").execute().data or []
     if reads:
         st.dataframe(reads, use_container_width=True)
     else:
         st.write("لم يتم تسجيل عمليات اطلاع بعد.")
 
-# ----------------- واجهة الأساتذة والمدراء -----------------
+# ----------------- 6. واجهة الأساتذة والمدراء -----------------
 def user_workspace():
-    st.header(f"مرحبًا بك: {st.session_state.user['full_name']}")
+    st.header(f"مرحبًا بك: {st.session_state.user.get('full_name', '')}")
     
     # 1. إرسال مرفق جديد
     st.subheader("📤 إرسال مرفق إلى المدير")
@@ -138,12 +121,10 @@ def user_workspace():
     
     if st.button("إرسال"):
         if uploaded_file and title:
-            # رفع الملف إلى Supabase Storage
             file_path = f"{st.session_state.user['id']}/{uploaded_file.name}"
             supabase.storage.from_("attachments").upload(file_path, uploaded_file.getvalue())
             file_url = supabase.storage.from_("attachments").get_public_url(file_path)
             
-            # تسجيل المراسلة في قاعدة البيانات
             supabase.table("documents").insert({
                 "title": title,
                 "file_url": file_url,
@@ -159,15 +140,14 @@ def user_workspace():
 
     # 2. عرض المستندات المتاحة وتتبع الاطلاع
     st.subheader("📑 المراسلات والمرفقات المتاحة")
-    docs = supabase.table("documents").select("*").eq("is_deleted_pending", False).execute().data
+    docs = supabase.table("documents").select("*").eq("is_deleted_pending", False).execute().data or []
     
     for doc in docs:
         col1, col2 = st.columns([3, 1])
-        col1.write(f"📄 **{doc['title']}** (من: {doc['sender_name']})")
+        col1.write(f"📄 **{doc.get('title', '')}** (من: {doc.get('sender_name', '')})")
         
         # زر فتح الملف وتسجيل "الاطلاع"
         if col2.button("عرض / تحميل", key=f"view_{doc['id']}"):
-            # تسجل في قاعدة البيانات أن هذا المستخدم فتح الملف الآن
             supabase.table("document_reads").insert({
                 "document_id": doc['id'],
                 "user_id": st.session_state.user['id'],
@@ -175,26 +155,36 @@ def user_workspace():
             }).execute()
             st.markdown(f"[اضغط هنا لفتح الملف]({doc['file_url']})")
             
-        # زر طلب الحذف (الحذف المؤقت)
-        if st.session_state.user['id'] == doc['sender_id']:
+        # زر طلب الحذف
+        if st.session_state.user['id'] == doc.get('sender_id'):
             if st.button("طلب حذف الملف", key=f"req_del_{doc['id']}"):
                 supabase.table("documents").update({"is_deleted_pending": True}).eq("id", doc['id']).execute()
                 st.warning("تم إرسال طلب الحذف لمدير النظام للموافقة عليه.")
                 st.rerun()
 
-# ----------------- التوجيه حسب حالة الدخول -----------------
+# ----------------- 7. التوجيه وإدارة الجلسة -----------------
 if st.session_state.user is None:
     login()
 else:
-    st.sidebar.write(f"المستخدم: {st.session_state.user['full_name']}")
-    st.sidebar.write(f"الرتبة: {st.session_state.user['role']}")
+    # استخراج البيانات بأمان سواء كانت List أو Dict
+    user_data = st.session_state.user
+    if isinstance(user_data, list):
+        user_data = user_data[0]
+        st.session_state.user = user_data
+
+    full_name = user_data.get('full_name', 'مستخدم')
+    role = user_data.get('role', 'user')
+
+    # الشريط الجانبي
+    st.sidebar.title(f"مرحباً، {full_name}")
+    st.sidebar.write(f"الرتبة: {role}")
     
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state.user = None
         st.rerun()
 
-    # توجيه حسب الصلاحيات
-    if st.session_state.user['role'] == 'admin':
+    # توجيه الواجهة حسب الصلاحيات
+    if role == 'admin':
         admin_dashboard()
     else:
         user_workspace()
