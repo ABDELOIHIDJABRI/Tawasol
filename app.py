@@ -26,17 +26,23 @@ def login():
     
     if st.button("دخول"):
         try:
+            # 1. محاولة تسجيل الدخول
             res = supabase.auth.sign_in_with_password({"email": email, "password": password})
-            # جلب معلومات الدور (Role)
-            profile = supabase.table("profiles").select("*").eq("id", res.user.id).single().execute()
             
-            if not profile.data['is_active']:
-                st.error("هذا الحساب غير نشط حاليًا. يرجى مراجعة مدير النظام.")
+            # 2. البحث عن البروفايل
+            profile = supabase.table("profiles").select("*").eq("id", res.user.id).execute()
+            
+            if not profile.data:
+                st.error("⚠️ الحساب موجود في الأمان ولكن لم يتم إنشاء البروفايل له في جدول profiles.")
+            elif not profile.data[0]['is_active']:
+                st.error("🔒 هذا الحساب غير نشط حاليًا. يرجى مراجعة مدير النظام.")
             else:
-                st.session_state.user = profile.data
+                st.session_state.user = profile.data[0]
                 st.rerun()
+                
         except Exception as e:
-            st.error("بيانات الدخول غير صحيحة.")
+            # عرض الخطأ الحقيقي القادم من السيرفر
+            st.error(f"❌ فشل الدخول: {e}")
 
 # ----------------- لوحة تحكم مدير النظام (ADMIN) -----------------
 def admin_dashboard():
