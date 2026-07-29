@@ -237,7 +237,7 @@ def show_admin_dashboard():
                 st.warning("تم حذف القسم")
                 st.rerun()
 
-    # Tab 3: إضافة مستخدم (تم تصحيح المحاذاة والإزاحات هنا)
+    # Tab 3: إضافة مستخدم
     with tab3:
         st.subheader("➕ إنشاء حساب مستخدم جديد")
         with st.form("create_user_form", clear_on_submit=True):
@@ -258,17 +258,14 @@ def show_admin_dashboard():
                             supabase.table("profiles").insert({
                                 "id": auth_res.user.id,
                                 "full_name": new_name,
-                                "role": new_role,
+                                "role": str(new_role).lower().strip(), # ضمان إرسال الصلاحية بنفس الصيغة
                                 "is_active": True
                             }).execute()
                             
                             st.success(f"✅ تم إنشاء حساب {new_name} بنجاح!")
                             st.rerun()
                     except Exception as err:
-                        if "violates row-level security" in str(err):
-                            st.error("❌ يجب إلغاء سياسة RLS من SQL Editor في Supabase أولاً.")
-                        else:
-                            st.error(f"❌ خطأ أثناء الإضافة: {err}")
+                        st.error(f"❌ خطأ أثناء الإضافة: {err}")
                 else:
                     st.warning("⚠️ يرجى تعبئة الحقول المطلوبة.")
 
