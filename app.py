@@ -7,7 +7,7 @@ st.set_page_config(page_title="نظام إدارة المراسلات", layout="
 
 # 1. إدخال الرابط والمفتاح مباشرة هنا
 RAW_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
-RAW_KEY = "sb_publishable_ySP_ak7gkbgHUhpuOHtiTQ_OPN1pHJ2"
+RAW_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY3V5b2hkbXdmb2F2c255emdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMzM5ODYsImV4cCI6MjEwMDkwOTk4Nn0.kDgDlTsPVxobmrrXBuQJI0hdOvRwJLBpPps0IQTclC4"
 
 # 2. تنظيف الرابط برمجياً لحذف أي زيادة مثل /rest/v1/ أو أي شرطة مائلة
 CLEAN_URL = re.sub(r'/(rest/v1|auth/v1)?/?$', '', RAW_URL.strip())
