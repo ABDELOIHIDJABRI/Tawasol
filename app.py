@@ -6,8 +6,8 @@ import datetime
 st.set_page_config(page_title="نظام إدارة المراسلات", layout="wide")
 
 # الربط بمشروع Supabase الخاص بك
-SUPABASE_URL = "أدخل_رابط_مشروعك_هنا"
-SUPABASE_KEY = "أدخل_المفتاح_الخاص_بمشروعك_هنا"
+SUPABASE_URL = "https://incuyohdmwfoavsnyzgc.supabase.co/rest/v1/"
+SUPABASE_KEY = "sb_publishable_ySP_ak7gkbgHUhpuOHtiTQ_OPN1pHJ2"
 
 @st.cache_resource
 def init_supabase():
