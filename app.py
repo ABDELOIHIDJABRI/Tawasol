@@ -2,30 +2,25 @@ import streamlit as st
 from supabase import create_client, Client
 import re
 
-# إعداد الصفحة
 st.set_page_config(page_title="نظام إدارة المراسلات", layout="wide")
 
-# 1. إدخال الرابط والمفتاح مباشرة هنا
-RAW_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
-RAW_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY3V5b2hkbXdmb2F2c255emdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMzM5ODYsImV4cCI6MjEwMDkwOTk4Nn0.kDgDlTsPVxobmrrXBuQJI0hdOvRwJLBpPps0IQTclC4"
+# البيانات الصحيحة للمشروع
+SUPABASE_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY3V5b2hkbXdmb2F2c255emdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMzM5ODYsImV4cCI6MjEwMDkwOTk4Nn0.kDgDlTsPVxobmrrXBuQJI0hdOvRwJLBpPps0IQTclC4"
 
-# 2. تنظيف الرابط برمجياً لحذف أي زيادة مثل /rest/v1/ أو أي شرطة مائلة
-CLEAN_URL = re.sub(r'/(rest/v1|auth/v1)?/?$', '', RAW_URL.strip())
+# تنظيف المتغيرات ضماناً للربط المباشر
+CLEAN_URL = str(SUPABASE_URL).strip().strip("/")
+CLEAN_KEY = str(SUPABASE_KEY).strip()
 
 @st.cache_resource
 def init_supabase():
-    return create_client(CLEAN_URL, RAW_KEY.strip())
+    return create_client(CLEAN_URL, CLEAN_KEY)
 
 supabase = init_supabase()
-
-# ----------------- تسجيل الدخول -----------------
-if 'user' not in st.session_state:
-    st.session_state.user = None
 
 def login():
     st.title("🔑 تسجيل الدخول للنظام")
     
-    # تحسين مدخلات النص لمنع مشاكل الترميز
     email = st.text_input("البريد الإلكتروني").strip()
     password = st.text_input("كلمة المرور", type="password").strip()
     
@@ -55,10 +50,22 @@ def login():
                 st.rerun()
                 
         except Exception as e:
-            # تنظيف نص الخطأ من أي ترميز غير مدعوم
             error_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
             st.error(f"❌ فشل الدخول: {error_msg}")
-# ----------------- لوحة تحكم مدير النظام (ADMIN) -----------------
+
+# إدارة الجلسة والواجهات
+if "user" not in st.session_state:
+    login()
+else:
+    st.sidebar.title(f"مرحباً، {st.session_state.user.get('full_name', 'مستخدم')}")
+    st.sidebar.write(f"الصلاحية: {st.session_state.user.get('role', 'user')}")
+    
+    if st.sidebar.button("تسجيل الخروج"):
+        del st.session_state.user
+        st.rerun()
+        
+    st.write("🎉 **مبروك! لقد تم الدخول إلى لوحة التحكم بنجاح.**")
+    # ----------------- لوحة تحكم مدير النظام (ADMIN) -----------------
 def admin_dashboard():
     st.header("⚙️ لوحة قيادة مدير النظام")
     
