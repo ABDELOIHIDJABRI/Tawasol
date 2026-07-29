@@ -62,7 +62,7 @@ st.markdown("""
         color: white !important;
     }
 </style>
-""", unsafe_allow_all_unicode=True, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ----------------- 2. الاتصال بـ Supabase -----------------
 SUPABASE_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
