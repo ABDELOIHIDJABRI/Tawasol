@@ -253,20 +253,29 @@ def show_admin_dashboard():
             new_name = col_a.text_input("الاسم الكامل*")
             new_role = col_b.selectbox("الصلاحية", ["user", "admin"], format_func=lambda x: "أستاذ / مستخدم" if x=="user" else "مدير نظام")
             
-            if st.form_submit_button("✨ إنشاء الحساب الآن", type="primary"):
-                if new_email and new_pass and new_name:
-                    try:
-                        auth_res = supabase.auth.sign_up({"email": new_email, "password": new_pass})
-                        if auth_res.user:
-                            supabase.table("profiles").upsert({
-                                "id": auth_res.user.id,
-                                "full_name": new_name,
-                                "role": new_role,
-                                "is_active": True
-                            }).execute()
-                            st.success(f"✅ تم إنشاء حساب {new_name} بنجاح!")
-                    except Exception as err:
-                        st.error(f"❌ خطأ: {err}")
+            # كود إنشاء الحساب المحدث
+if st.form_submit_button("✨ إنشاء الحساب الآن", type="primary"):
+    if new_email and new_pass and new_name:
+        try:
+            # 1. إنشاء الحساب في Supabase Auth
+            auth_res = supabase.auth.sign_up({"email": new_email, "password": new_pass})
+            
+            if auth_res.user:
+                # 2. إضافة بيانات البروفايل
+                supabase.table("profiles").insert({
+                    "id": auth_res.user.id,
+                    "full_name": new_name,
+                    "role": new_role,
+                    "is_active": True
+                }).execute()
+                
+                st.success(f"✅ تم إنشاء حساب {new_name} بنجاح!")
+                st.rerun()
+        except Exception as err:
+            if "violates row-level security" in str(err):
+                st.error("❌ يجب إلغاء سياسة RLS من SQL Editor في Supabase أولاً.")
+            else:
+                st.error(f"❌ خطأ أثناء الإضافة: {err}")
 
     # Tab 4: إدارة الحسابات
     with tab4:
