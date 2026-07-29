@@ -1,17 +1,20 @@
 import streamlit as st
 from supabase import create_client, Client
-import datetime
+import re
 
-# إعداد الصفحة لتكون متجاوبة مع الهواتف والحواسيب
+# إعداد الصفحة
 st.set_page_config(page_title="نظام إدارة المراسلات", layout="wide")
 
-# الربط بمشروع Supabase الخاص بك
-SUPABASE_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
-SUPABASE_KEY = "sb_publishable_ySP_ak7gkbgHUhpuOHtiTQ_OPN1pHJ2"
+# 1. إدخال الرابط والمفتاح مباشرة هنا
+RAW_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
+RAW_KEY = "أدخل_مفتاح_anon_الخاص_بك_هنا"
+
+# 2. تنظيف الرابط برمجياً لحذف أي زيادة مثل /rest/v1/ أو أي شرطة مائلة
+CLEAN_URL = re.sub(r'/(rest/v1|auth/v1)?/?$', '', RAW_URL.strip())
 
 @st.cache_resource
 def init_supabase():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    return create_client(CLEAN_URL, RAW_KEY.strip())
 
 supabase = init_supabase()
 
