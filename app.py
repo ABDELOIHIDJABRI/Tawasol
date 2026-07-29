@@ -90,7 +90,6 @@ def show_login():
 def render_send_document_form():
     st.subheader("📤 إرسال مراسلة / ملف جديد")
     
-    # جلب الأقسام والمستخدمين لتحديد الجهة المستقبلة
     depts = [d['name'] for d in (supabase.table("departments").select("name").execute().data or [])] or ["عام"]
     all_users = supabase.table("profiles").select("id, full_name").execute().data or []
     user_map = {u['full_name']: u['id'] for u in all_users if u['id'] != st.session_state.user['id']}
@@ -123,12 +122,10 @@ def render_send_document_form():
                 st.warning("⚠️ يرجى تعبئة العنوان وإرفاق الملف.")
             else:
                 try:
-                    # رفع الملف للمخزن
                     file_path = f"{st.session_state.user['id']}/{up_file.name}"
                     supabase.storage.from_("attachments").upload(file_path, up_file.getvalue())
                     file_url = supabase.storage.from_("attachments").get_public_url(file_path)
 
-                    # إدراج البيانات
                     supabase.table("documents").insert({
                         "title": title,
                         "ref_number": ref_num,
@@ -151,7 +148,6 @@ def render_inbox_and_outbox():
     user_id = st.session_state.user['id']
     
     with tab_in:
-        # جلب المراسلات الموجهة للمستخدم شخضياً أو للعام
         docs = supabase.table("documents").select("*").or_(f"receiver_id.eq.{user_id},receiver_id.is.null").order("id", desc=True).execute().data or []
         
         if not docs:
@@ -205,11 +201,10 @@ def show_admin_dashboard():
         st.divider()
         render_inbox_and_outbox()
 
-    # Tab 2: إدارة الأقسام مع الحذف والتعديل
+    # Tab 2: إدارة الأقسام
     with tab2:
         st.subheader("📁 إدارة الأقسام الهيكلية")
         
-        # إضافة قسم
         c_add1, c_add2 = st.columns([3, 1])
         new_d_name = c_add1.text_input("اسم القسم الجديد", placeholder="أدخل اسم القسم الجديد...", label_visibility="collapsed")
         if c_add2.button("➕ إضافة قسم", type="primary"):
@@ -229,7 +224,6 @@ def show_admin_dashboard():
             col_id, col_name, col_edit, col_del = st.columns([1, 4, 2, 2])
             col_id.write(f"#{d['id']}")
             
-            # حقل تعديل الاسم
             edited_name = col_name.text_input("الاسم", value=d['name'], key=f"dept_input_{d['id']}", label_visibility="collapsed")
             
             if col_edit.button("💾 حفظ", key=f"save_d_{d['id']}"):
@@ -243,7 +237,7 @@ def show_admin_dashboard():
                 st.warning("تم حذف القسم")
                 st.rerun()
 
-    # Tab 3: إضافة مستخدم
+    # Tab 3: إضافة مستخدم (تم تصحيح المحاذاة والإزاحات هنا)
     with tab3:
         st.subheader("➕ إنشاء حساب مستخدم جديد")
         with st.form("create_user_form", clear_on_submit=True):
@@ -253,29 +247,30 @@ def show_admin_dashboard():
             new_name = col_a.text_input("الاسم الكامل*")
             new_role = col_b.selectbox("الصلاحية", ["user", "admin"], format_func=lambda x: "أستاذ / مستخدم" if x=="user" else "مدير نظام")
             
-            # كود إنشاء الحساب المحدث
-if st.form_submit_button("✨ إنشاء الحساب الآن", type="primary"):
-    if new_email and new_pass and new_name:
-        try:
-            # 1. إنشاء الحساب في Supabase Auth
-            auth_res = supabase.auth.sign_up({"email": new_email, "password": new_pass})
+            submit_user = st.form_submit_button("✨ إنشاء الحساب الآن", type="primary")
             
-            if auth_res.user:
-                # 2. إضافة بيانات البروفايل
-                supabase.table("profiles").insert({
-                    "id": auth_res.user.id,
-                    "full_name": new_name,
-                    "role": new_role,
-                    "is_active": True
-                }).execute()
-                
-                st.success(f"✅ تم إنشاء حساب {new_name} بنجاح!")
-                st.rerun()
-        except Exception as err:
-            if "violates row-level security" in str(err):
-                st.error("❌ يجب إلغاء سياسة RLS من SQL Editor في Supabase أولاً.")
-            else:
-                st.error(f"❌ خطأ أثناء الإضافة: {err}")
+            if submit_user:
+                if new_email and new_pass and new_name:
+                    try:
+                        auth_res = supabase.auth.sign_up({"email": new_email, "password": new_pass})
+                        
+                        if auth_res.user:
+                            supabase.table("profiles").insert({
+                                "id": auth_res.user.id,
+                                "full_name": new_name,
+                                "role": new_role,
+                                "is_active": True
+                            }).execute()
+                            
+                            st.success(f"✅ تم إنشاء حساب {new_name} بنجاح!")
+                            st.rerun()
+                    except Exception as err:
+                        if "violates row-level security" in str(err):
+                            st.error("❌ يجب إلغاء سياسة RLS من SQL Editor في Supabase أولاً.")
+                        else:
+                            st.error(f"❌ خطأ أثناء الإضافة: {err}")
+                else:
+                    st.warning("⚠️ يرجى تعبئة الحقول المطلوبة.")
 
     # Tab 4: إدارة الحسابات
     with tab4:
