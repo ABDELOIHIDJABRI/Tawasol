@@ -24,29 +24,40 @@ if 'user' not in st.session_state:
 
 def login():
     st.title("🔑 تسجيل الدخول للنظام")
-    email = st.text_input("البريد الإلكتروني")
-    password = st.text_input("كلمة المرور", type="password")
+    
+    # تحسين مدخلات النص لمنع مشاكل الترميز
+    email = st.text_input("البريد الإلكتروني").strip()
+    password = st.text_input("كلمة المرور", type="password").strip()
     
     if st.button("دخول"):
+        if not email or not password:
+            st.warning("يرجى إدخال البريد الإلكتروني وكلمة المرور.")
+            return
+
         try:
-            # 1. محاولة تسجيل الدخول
-            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            # 1. تسجيل الدخول عبر Supabase
+            res = supabase.auth.sign_in_with_password({
+                "email": email, 
+                "password": password
+            })
             
-            # 2. البحث عن البروفايل
-            profile = supabase.table("profiles").select("*").eq("id", res.user.id).execute()
+            # 2. جلب بيانات البروفايل والصلاحيات
+            profile_response = supabase.table("profiles").select("*").eq("id", res.user.id).execute()
             
-            if not profile.data:
-                st.error("⚠️ الحساب موجود في الأمان ولكن لم يتم إنشاء البروفايل له في جدول profiles.")
-            elif not profile.data[0]['is_active']:
-                st.error("🔒 هذا الحساب غير نشط حاليًا. يرجى مراجعة مدير النظام.")
+            if not profile_response.data:
+                st.error("⚠️ الحساب غير مسجل في جدول الصلاحيات (profiles).")
+            elif not profile_response.data[0].get('is_active', False):
+                st.error("🔒 هذا الحساب غير نشط حاليًا. يرجى مراجعة إدارة النظام.")
             else:
-                st.session_state.user = profile.data[0]
+                # نجاح الدخول وتخزين البيانات في الجلسة
+                st.session_state.user = profile_response.data[0]
+                st.success("تم تسجيل الدخول بنجاح! جاري التحميل...")
                 st.rerun()
                 
         except Exception as e:
-            # عرض الخطأ الحقيقي القادم من السيرفر
-            st.error(f"❌ فشل الدخول: {e}")
-
+            # تنظيف نص الخطأ من أي ترميز غير مدعوم
+            error_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
+            st.error(f"❌ فشل الدخول: {error_msg}")
 # ----------------- لوحة تحكم مدير النظام (ADMIN) -----------------
 def admin_dashboard():
     st.header("⚙️ لوحة قيادة مدير النظام")
