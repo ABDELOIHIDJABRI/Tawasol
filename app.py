@@ -4,11 +4,10 @@ from supabase import create_client, Client
 # 1. إعداد الصفحة
 st.set_page_config(page_title="نظام إدارة المراسلات", layout="wide")
 
-# 2. بيانات الاتصال بـ Supabase
+# 2. بيانات الاتصال
 SUPABASE_URL = "https://incuyohdmwfoavsnyzgc.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImluY3V5b2hkbXdmb2F2c255emdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMzM5ODYsImV4cCI6MjEwMDkwOTk4Nn0.kDgDlTsPVxobmrrXBuQJI0hdOvRwJLBpPps0IQTclC4"
 
-# 3. تنظيف البيانات لضمان الاتصال
 CLEAN_URL = str(SUPABASE_URL).strip().strip("/")
 CLEAN_KEY = str(SUPABASE_KEY).strip()
 
@@ -18,7 +17,11 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# 4. دالة تسجيل الدخول
+# تهيئة متغير الجلسة بأمان في بداية الكود
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+# 3. دالة تسجيل الدخول
 def login():
     st.title("🔑 تسجيل الدخول للنظام")
     
@@ -45,7 +48,6 @@ def login():
             elif not profile_response.data[0].get('is_active', False):
                 st.error("🔒 هذا الحساب غير نشط حاليًا. يرجى مراجعة إدارة النظام.")
             else:
-                # حفظ بيانات المستخدم في الجلسة (نأخذ العنصر الأول بشكل آمن)
                 st.session_state.user = profile_response.data[0]
                 st.success("تم تسجيل الدخول بنجاح! جاري التحميل...")
                 st.rerun()
@@ -54,11 +56,10 @@ def login():
             error_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
             st.error(f"❌ فشل الدخول: {error_msg}")
 
-# 5. إدارة الجلسة والواجهة الرئيسية
-if "user" not in st.session_state:
+# 4. توجيه الصفحة
+if st.session_state.user is None:
     login()
 else:
-    # استخراج بيانات المستخدم بأمان
     user_data = st.session_state.user
     if isinstance(user_data, list):
         user_data = user_data[0]
@@ -66,19 +67,16 @@ else:
     full_name = user_data.get('full_name', 'مستخدم')
     role = user_data.get('role', 'user')
 
-    # القائمة الجانبية
     st.sidebar.title(f"مرحباً، {full_name}")
     st.sidebar.write(f"الصلاحية: {role}")
     
     if st.sidebar.button("تسجيل الخروج"):
-        del st.session_state.user
+        st.session_state.user = None
         st.rerun()
         
-    # الصفحة الرئيسية بعد الدخول
     st.title("🎉 مرحباً بك في لوحة التحكم!")
     st.success("تم تسجيل الدخول بنجاح للنظام.")
-    # ----------------- لوحة تحكم مدير النظام (ADMIN) -----------------
-def admin_dashboard():
+    def admin_dashboard():
     st.header("⚙️ لوحة قيادة مدير النظام")
     
     # 1. قسم الإحصائيات الشاملة
